@@ -16,16 +16,54 @@
         android:layout_below="@id/tv_time"
         android:padding="10dp"
         android:src="@mipmap/robot"/>
-    <TextView
-        android:id="@+id/tv_text"
+    <LinearLayout
         android:layout_width="wrap_content"
         android:layout_height="wrap_content"
-        android:layout_toRightOf="@id/iv_icon"
         android:layout_below="@id/tv_time"
+        android:layout_toRightOf="@id/iv_icon"
         android:layout_marginTop="10dp"
         android:layout_marginRight="20dp"
-        android:gravity="left|center_vertical"
-        android:background="@drawable/chat_from"
-        android:textColor="#000000"
-        android:textSize="16sp"/>
+        android:orientation="vertical">
+        <TextView
+            android:id="@+id/tv_text"
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:gravity="left|center_vertical"
+            android:background="@drawable/chat_from"
+            android:textColor="#000000"
+            android:text="你好啊，吃饭了没有？"
+            android:textSize="16sp"/>
+        <RelativeLayout
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_marginTop="3dp"
+            android:layout_marginBottom="5dp">
+            <ImageView
+                android:id="@+id/zan"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@mipmap/zan"
+                android:layout_marginRight="45dp"
+                android:clickable="true"
+                android:layout_alignParentRight="true"/>
+            <ImageView
+                android:id="@+id/cai"
+                android:layout_width="25dp"
+                android:layout_height="25dp"
+                android:src="@mipmap/cai"
+                android:layout_marginRight="5dp"
+                android:clickable="true"
+                android:layout_alignParentRight="true"/>
+            <TextView
+                android:id="@+id/eval"
+                android:layout_width="wrap_content"
+                android:layout_height="wrap_content"
+                android:layout_toLeftOf="@id/zan"
+                android:layout_marginRight="30dp"
+                android:text="评价一下吧?"
+                android:layout_centerVertical="true"
+                android:textSize="16sp"/>
+        </RelativeLayout>
+    </LinearLayout>
+
 </RelativeLayout>

@@ -46,8 +46,19 @@
         android:layout_toLeftOf="@id/recorder_length"
         android:layout_below="@id/tv_time"
         android:layout_marginTop="10dp"
-        android:layout_marginRight="3dp"
+        android:layout_marginRight="2dp"
         android:text=""
         android:textColor="#ff777777"/>
+    <ImageView
+        android:id="@+id/warning"
+        android:layout_width="60dp"
+        android:layout_height="60dp"
+        android:layout_toLeftOf="@id/recorder_time"
+        android:layout_below="@id/tv_time"
+        android:layout_marginLeft="10dp"
+        android:paddingTop="15dp"
+        android:paddingBottom="15dp"
+        android:src="@mipmap/net_err"
+        android:visibility="gone"/>
 
 </RelativeLayout>

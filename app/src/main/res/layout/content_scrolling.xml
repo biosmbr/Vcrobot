@@ -10,6 +10,37 @@
     android:orientation="vertical"
     android:background="#ecedf1">
 
+
+    <RelativeLayout
+        android:id="@+id/net_err"
+        android:layout_width="match_parent"
+        android:layout_height="35dp"
+        android:visibility="gone"
+        android:background="#f9e36b">
+        <ImageView
+            android:id="@+id/warning"
+            android:layout_width="35dp"
+            android:layout_height="35dp"
+            android:padding="6dp"
+            android:layout_alignParentLeft="true"
+            android:src="@mipmap/net_err"/>
+        <ImageView
+            android:id="@+id/go_setting"
+            android:layout_width="50dp"
+            android:layout_height="50dp"
+            android:padding="8dp"
+            android:layout_alignParentRight="true"
+            android:src="@mipmap/go_to_icon"/>
+        <TextView
+            android:layout_width="wrap_content"
+            android:layout_height="wrap_content"
+            android:layout_toLeftOf="@+id/go_setting"
+            android:layout_toRightOf="@+id/warning"
+            android:padding="8dp"
+            android:gravity="left"
+            android:text="世界上最遥远的距离就是网络存在问题"
+            android:textSize="16sp"/>
+    </RelativeLayout>
     <ListView
         android:id="@+id/lv_chat"
         android:layout_width="match_parent"

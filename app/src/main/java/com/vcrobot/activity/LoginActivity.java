@@ -9,6 +9,7 @@ import android.content.SharedPreferences;
 import android.content.pm.PackageManager;
 import android.support.annotation.NonNull;
 import android.support.design.widget.Snackbar;
+import android.support.v7.app.ActionBar;
 import android.support.v7.app.AppCompatActivity;
 import android.app.LoaderManager.LoaderCallbacks;
 
@@ -24,6 +25,7 @@ import android.provider.ContactsContract;
 import android.text.TextUtils;
 import android.util.Log;
 import android.view.KeyEvent;
+import android.view.MenuItem;
 import android.view.View;
 import android.view.View.OnClickListener;
 import android.view.inputmethod.EditorInfo;
@@ -35,8 +37,9 @@ import android.widget.TextView;
 import android.widget.Toast;
 
 import com.vcrobot.R;
+import com.vcrobot.utils.CommonUtil;
 import com.vcrobot.utils.NetTask;
-import com.vcrobot.utils.VCRConst;
+import com.vcrobot.utils.EventUtil;
 
 import java.util.ArrayList;
 import java.util.List;
@@ -97,9 +100,31 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         mProgressView = findViewById(R.id.login_progress);
 
         //-------------------------------
+        setupActionBar();
         if (isLoginExist()) {
             attemptLogin();
         }
+    }
+
+    /**
+     * Set up the {@link android.app.ActionBar}, if the API is available.
+     */
+    private void setupActionBar() {
+        ActionBar actionBar = getSupportActionBar();
+        if (actionBar != null) {
+            // Show the Up button in the action bar.
+            actionBar.setDisplayHomeAsUpEnabled(true);
+        }
+    }
+
+    @Override
+    public boolean onOptionsItemSelected(MenuItem item) {
+        int id = item.getItemId();
+        if (id == android.R.id.home) {
+            finish();
+            return true;
+        }
+        return super.onOptionsItemSelected(item);
     }
 
     private void populateAutoComplete() {
@@ -314,22 +339,34 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
 
         @Override
         protected Integer doInBackground(Void... params) {
-            // TODO: attempt authentication against a network service.
+            // 网络检测
+            if (!CommonUtil.isNetWorkConnected(getApplicationContext())){
+                return EventUtil.NET_ERR;//网络不可用
+            }
 
             String login = sendLoginRequest(mEmail, mPassword);
-            if (login.equals("notexist")) {
+            String reg = null;
+            if (null != login && login.equals("notexist")) {
                 Log.i("TAG", "doInBackground: notexist");
                 //账号不存在，执行注册
-                String reg = sendRegisterRequest(mEmail, mPassword);
-                if (reg.equals("success")) {
+                reg = sendRegisterRequest(mEmail, mPassword);
+                if (null != reg && reg.equals("success")) {
                     Log.i("TAG", "doInBackground: reg success");
-                    return 0;
+                    //注册成功
+                    return EventUtil.MSG_REG_SUCCESS;
                 }
             } else if (login.equals("success")) {
                 Log.i("TAG", "doInBackground: login success");
-                return 1;
+                //登陆成功
+                return EventUtil.MSG_LOGIN_SUCCESS;
             }
-            return -1;
+
+            if (null == login){
+                //服务器出现故障
+                return EventUtil.SERVICE_ERR;
+            }
+            //账号密码不匹配
+            return EventUtil.MSG_LOGIN_ERR;
         }
 
         @Override
@@ -337,21 +374,25 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
             mAuthTask = null;
             showProgress(false);
 
-            if (success >= 0) {
-                //记住用户名、密码
-                saveLoginInfo();
-                if (success.equals(0)) {
-                    Toast.makeText(getApplicationContext(), "欢迎新用户!", Toast.LENGTH_LONG).show();
-                } else {
-                    Toast.makeText(getApplicationContext(), "欢迎归来!", Toast.LENGTH_LONG).show();
-                }
-                Intent intent = new Intent();
-                intent.putExtra("email", mEmail);
-                setResult(VCRConst.MSG_LOGIN,intent);
-                finish();
-            } else {
-                mPasswordView.setError(getString(R.string.error_incorrect_password));
-                mPasswordView.requestFocus();
+            switch (success){
+                case EventUtil.MSG_LOGIN_SUCCESS:
+                    Toast.makeText(getApplicationContext(), "欢迎"+mEmail+"归来!", Toast.LENGTH_LONG).show();
+                    setIntentClose(mEmail);
+                    break;
+                case EventUtil.MSG_REG_SUCCESS:
+                    Toast.makeText(getApplicationContext(), "欢迎新用户"+mEmail+"!", Toast.LENGTH_LONG).show();
+                    setIntentClose(mEmail);
+                    break;
+                case EventUtil.MSG_LOGIN_ERR:
+                    mPasswordView.setError(getString(R.string.error_incorrect_password));
+                    mPasswordView.requestFocus();
+                    break;
+                case EventUtil.NET_ERR:
+                    Toast.makeText(getApplicationContext(),"呀，网络好像走丢了！", Toast.LENGTH_LONG).show();
+                    break;
+                case EventUtil.SERVICE_ERR:
+                    Toast.makeText(getApplicationContext(), "服务器睡着了!", Toast.LENGTH_LONG).show();
+                    break;
             }
         }
 
@@ -362,6 +403,17 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         }
     }
 
+    /**
+     * 添加Intent数据，关闭Activity
+     */
+    private void setIntentClose(String email){
+        saveLoginInfo();
+        //登陆、注册成功，后续操作
+        Intent intent = new Intent();
+        intent.putExtra("email", email);
+        setResult(EventUtil.MSG_LOGIN,intent);
+        finish();
+    }
     //------------------------------------
     private String email;
     private String pwd;
@@ -369,7 +421,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
     private boolean isLoginExist() {
         //获得sp实例对象
         SharedPreferences sp = this.getSharedPreferences("data", Context.MODE_PRIVATE);
-        //如果登陆过，直接登录
+        //如果登陆过，直接登录(false为默认值，如果EXIST不存在，则false)
         if (sp.getBoolean("EXIST", false)) {
             email = sp.getString("email", "");
             pwd = sp.getString("pwd", "");
@@ -407,7 +459,8 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         List<String> value = new ArrayList<String>();
         value.add(mEmail);
         value.add(mPassword);
-        return NetTask.doPost(VCRConst.URL_LOGIN, key, value);
+        //MD5加密
+        return NetTask.doPost(EventUtil.URL_LOGIN, key, value,true);
     }
 
     /**
@@ -424,6 +477,7 @@ public class LoginActivity extends AppCompatActivity implements LoaderCallbacks<
         List<String> value = new ArrayList<String>();
         value.add(mEmail);
         value.add(mPassword);
-        return NetTask.doPost(VCRConst.URL_REGISTER, key, value);
+        //MD5加密
+        return NetTask.doPost(EventUtil.URL_REGISTER, key, value,true);
     }
 }

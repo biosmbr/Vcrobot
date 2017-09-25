@@ -6,15 +6,24 @@ import android.content.Context;
  * Created by Dolphix.J Qing on 2016/5/8.
  */
 public class ChatMessage {
+    //文本
     private String content;
     private int flag;
     private String time;
 
+    //语音
     private float seconds;
     private String folder;
     private String srText;
 
+    //网络情况
+    private int netErr;
+
+    //消息类型
     private int type;
+
+    //回复消息rid
+    private String rid;
 
     public ChatMessage(){
     }
@@ -73,5 +82,21 @@ public class ChatMessage {
 
     public void setSrText(String srText) {
         this.srText = srText;
+    }
+
+    public int getNetErr() {
+        return netErr;
+    }
+
+    public void setNetErr(int netErr) {
+        this.netErr = netErr;
+    }
+
+    public String getRid() {
+        return rid;
+    }
+
+    public void setRid(String rid) {
+        this.rid = rid;
     }
 }

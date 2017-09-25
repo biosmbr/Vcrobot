@@ -10,12 +10,15 @@ import android.util.Log;
 import android.view.MotionEvent;
 import android.view.View;
 import android.widget.Button;
+import android.widget.Toast;
+
 import com.iflytek.cloud.RecognizerListener;
 import com.iflytek.cloud.RecognizerResult;
 import com.iflytek.cloud.SpeechConstant;
 import com.iflytek.cloud.SpeechError;
 import com.iflytek.cloud.SpeechRecognizer;
 import com.vcrobot.R;
+import com.vcrobot.utils.CommonUtil;
 import com.vcrobot.utils.JsonUtil;
 
 import org.json.JSONException;
@@ -49,6 +52,7 @@ public class VoiceRecognizedBtn extends Button implements RecognizerListener {
     //是否触发Long onClick
     private boolean longClick = false;
     private long curTime = 0L;
+    private boolean netTipToast = true;
 
     private AudioRecorderDialog audioRecorderDialog;
 
@@ -74,7 +78,7 @@ public class VoiceRecognizedBtn extends Button implements RecognizerListener {
      * @return
      */
     private String getVoiceFileName(){
-        return (curFilePath = Environment.getExternalStorageDirectory()+"/vcr/"+randomFileName()+".wav");
+        return (curFilePath = Environment.getExternalStorageDirectory()+"/vcr/voice/"+randomFileName()+".wav");
     }
 
 
@@ -112,7 +116,7 @@ public class VoiceRecognizedBtn extends Button implements RecognizerListener {
             switch (msg.what){
                 case MSG_RECOGNIZED:
                     if (null != voiceRecognizedFinishLinster){
-                        Log.i(TAG, "handleMessage: "+srText);
+//                        Log.i(TAG, "handleMessage: "+srText);
                         voiceRecognizedFinishLinster.recognizedFinish(srText);
                         sr.cancel();
                     }
@@ -186,6 +190,16 @@ public class VoiceRecognizedBtn extends Button implements RecognizerListener {
     private class LongClickListener implements OnLongClickListener{
         @Override
         public boolean onLongClick(View v) {
+
+            if (!CommonUtil.isNetWorkConnected(getContext())){
+                //网络错误，取消检测
+                Log.i(TAG, "onEndOfSpeech: 网络错误!");
+                if (netTipToast) {
+                    Toast.makeText(getContext(), "网络好像走丢了，语音平台连接失败!", Toast.LENGTH_SHORT).show();
+                    netTipToast = false;
+                }
+                return false;
+            }
             longClick = true;
             //清空结果集
             srResults.clear();
@@ -226,6 +240,11 @@ public class VoiceRecognizedBtn extends Button implements RecognizerListener {
     public void onEndOfSpeech() {
 //        audioRecorderDialog.dimissDialog();
         Log.i(TAG, "onEndOfSpeech: ");
+        if (!CommonUtil.isNetWorkConnected(getContext())){
+            //网络错误，取消检测
+            Log.i(TAG, "onEndOfSpeech: 网络错误!");
+            sr.cancel();
+        }
     }
 
     /**
@@ -267,6 +286,16 @@ public class VoiceRecognizedBtn extends Button implements RecognizerListener {
 
     @Override
     public boolean onTouchEvent(MotionEvent event) {
+
+        if (!CommonUtil.isNetWorkConnected(getContext())){
+            //网络错误，取消检测
+            Log.i(TAG, "onEndOfSpeech: 网络错误!");
+            if (netTipToast) {
+                Toast.makeText(getContext(), "网络好像走丢了，语音平台连接失败!", Toast.LENGTH_SHORT).show();
+                netTipToast = false;
+            }
+            return super.onTouchEvent(event);
+        }
         int action = event.getAction();
         int x = (int)event.getX();
         int y = (int)event.getY();
@@ -305,7 +334,7 @@ public class VoiceRecognizedBtn extends Button implements RecognizerListener {
                     Log.i(TAG, "onTouchEvent: "+totalAudioTime);
                     audioRecorderDialog.timeTooShortDialog();
                     try {
-                        Thread.sleep(2500);
+                        Thread.sleep(100);
                     }catch (Exception e) {e.printStackTrace();}
                     audioRecorderDialog.dimissDialog();
                     //取消语音识别

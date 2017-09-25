@@ -1,4 +1,4 @@
-package com.vcrobot;
+package com.vcrobot.activity;
 
 import android.app.Activity;
 import android.content.Intent;
@@ -6,14 +6,14 @@ import android.os.Bundle;
 import android.os.Handler;
 import android.os.Message;
 
-import com.vcrobot.activity.MainActivity;
-import com.vcrobot.utils.VCRConst;
+import com.vcrobot.R;
+import com.vcrobot.utils.EventUtil;
 
 /**
  * Created by Dolphix.J Qing on 2016/5/16.
  */
 public class SplashActivity extends Activity{
-    private static final int sleepTime = 1000;
+    private static final int sleepTime = 3000;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
@@ -24,7 +24,7 @@ public class SplashActivity extends Activity{
     @Override
     protected void onStart() {
 
-        handler.sendEmptyMessageDelayed(VCRConst.LOAD_FINISH,sleepTime);
+        handler.sendEmptyMessageDelayed(EventUtil.LOAD_FINISH,sleepTime);
         super.onStart();
     }
 
@@ -32,7 +32,7 @@ public class SplashActivity extends Activity{
         @Override
         public void handleMessage(Message msg) {
             switch (msg.what){
-                case VCRConst.LOAD_FINISH:
+                case EventUtil.LOAD_FINISH:
                     comeInMainActivity();
                     break;
             }

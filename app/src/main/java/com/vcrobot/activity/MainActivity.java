@@ -3,8 +3,11 @@ package com.vcrobot.activity;
 import android.content.Context;
 import android.content.Intent;
 import android.graphics.drawable.AnimationDrawable;
+import android.media.Image;
 import android.media.MediaPlayer;
 import android.os.Bundle;
+import android.os.Handler;
+import android.os.Message;
 import android.support.design.widget.NavigationView;
 import android.support.v4.view.GravityCompat;
 import android.support.v4.view.ViewPager;
@@ -16,6 +19,7 @@ import android.text.Editable;
 import android.text.TextUtils;
 import android.text.TextWatcher;
 import android.util.Log;
+import android.view.LayoutInflater;
 import android.view.Menu;
 import android.view.MenuItem;
 import android.view.View;
@@ -36,11 +40,14 @@ import com.vcrobot.adapter.EmojiAdapter;
 import com.vcrobot.adapter.EmojiPagerAdapter;
 import com.vcrobot.bean.ChatMessage;
 import com.vcrobot.entity.RecorderMediaManager;
+import com.vcrobot.utils.CommonUtil;
 import com.vcrobot.utils.EmojiUtil;
+import com.vcrobot.utils.LocalInfo;
 import com.vcrobot.utils.NetTask;
 import com.vcrobot.utils.JsonUtil;
 import com.vcrobot.utils.TuringUtil;
-import com.vcrobot.utils.VCRConst;
+import com.vcrobot.utils.EventUtil;
+import com.vcrobot.utils.VcrobotUtil;
 import com.vcrobot.view.ClipEidtText;
 import com.vcrobot.view.ExpandGridView;
 import com.vcrobot.view.VoiceRecognizedBtn;
@@ -77,17 +84,21 @@ public class MainActivity extends AppCompatActivity
     private int oldSize, curSize;
     private ImageView logo;
     private TextView email;
+    private RelativeLayout netErr;
+    private boolean netFlag;
+    private boolean canTuring;
+    private String sendText;
 
     @Override
     protected void onCreate(Bundle savedInstanceState) {
         super.onCreate(savedInstanceState);
         setContentView(R.layout.activity_main);
 
-
         initDrawer();
         initView();
         setOnClickListener();
         sendWelcomeTips();
+        netWorkConnected();
     }
 
     @Override
@@ -129,13 +140,22 @@ public class MainActivity extends AppCompatActivity
         int id = item.getItemId();
 
         if (id == R.id.nav_camera) {
-            Toast.makeText(this,"正在努力开发中...", Toast.LENGTH_SHORT).show();
+            //人脸识别
+            Intent intent = new Intent(MainActivity.this,TypeFaceActivity.class);
+            startActivity(intent);
         } else if (id == R.id.nav_gallery) {
-            Toast.makeText(this,"正在努力开发中...", Toast.LENGTH_SHORT).show();
+            //照片仓库
+            Intent intent = new Intent(Intent.ACTION_PICK);
+            intent.setType("image/*");
+            startActivity(intent);
         } else if (id == R.id.nav_slideshow) {
-            Toast.makeText(this,"正在努力开发中...", Toast.LENGTH_SHORT).show();
+            //语音仓库
+            Intent intent = new Intent(MainActivity.this,VoiceHomeActivity.class);
+            startActivity(intent);
         } else if (id == R.id.nav_manage) {
-            Toast.makeText(this,"正在努力开发中...", Toast.LENGTH_SHORT).show();
+            //兴趣设置
+            Intent intent = new Intent(MainActivity.this,SettingsActivity.class);
+            startActivity(intent);
         } else if (id == R.id.nav_share) {
             Toast.makeText(this,"正在努力开发中...", Toast.LENGTH_SHORT).show();
         } else if (id == R.id.nav_send) {
@@ -171,6 +191,41 @@ public class MainActivity extends AppCompatActivity
     }
     //---------------------------------------------------------------------------------
 
+
+    @Override
+    protected void onRestart() {
+
+        email.setText(LocalInfo.getLocalUserName(getApplicationContext()));
+        super.onRestart();
+    }
+
+    @Override
+    protected void onResumeFragments() {
+        email.setText(LocalInfo.getLocalUserName(getApplicationContext()));
+        super.onResumeFragments();
+    }
+
+    /**
+     * 网络状态，子线程
+     */
+    private void netWorkConnected(){
+        new Thread(new Runnable(){
+            @Override
+            public void run() {
+                while (netFlag) {
+                    if (!CommonUtil.isNetWorkConnected(getApplicationContext())) {
+                        handler.sendEmptyMessage(EventUtil.NET_ERR);
+                    } else {
+                        handler.sendEmptyMessage(EventUtil.NET_OK);
+                    }
+                    try {
+                        Thread.sleep(6000);
+                    } catch (Exception e){e.printStackTrace();}
+                }
+            }
+        }).start();
+
+    }
     /**
      * 初始化，所有控件
      */
@@ -184,8 +239,7 @@ public class MainActivity extends AppCompatActivity
         emojiIconContainer = (LinearLayout) findViewById(R.id.ll_face_container);
         buttonSetModeVoice = (Button) findViewById(R.id.btn_set_mode_voice);
         manager = (InputMethodManager) getSystemService(Context.INPUT_METHOD_SERVICE);
-        getWindow().setSoftInputMode(
-                WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
+        getWindow().setSoftInputMode(WindowManager.LayoutParams.SOFT_INPUT_STATE_ALWAYS_HIDDEN);
         emojiViewpager = (ViewPager) findViewById(R.id.vPager);
         emojiRES = getEmojiRes(35);
         // 初始化表情viewpager
@@ -203,6 +257,9 @@ public class MainActivity extends AppCompatActivity
         chatListView.setAdapter(chatAdapter);
         oldTime = 0;
         oldSize = 0;
+        netErr = (RelativeLayout) findViewById(R.id.net_err);
+        netFlag = true;
+        email.setText(LocalInfo.getLocalUserName(getApplicationContext()));
     }
 
     /**
@@ -220,6 +277,7 @@ public class MainActivity extends AppCompatActivity
         chatListView.setOnItemClickListener(new VoiceItemClickListener());
         buttonSend.setOnClickListener(this);
         logo.setOnClickListener(this);
+        netErr.setOnClickListener(this);
     }
 
     /**
@@ -239,8 +297,8 @@ public class MainActivity extends AppCompatActivity
     private void sendWelcomeTips() {
         ChatMessage msg = new ChatMessage();
         msg.setContent(getRandomWelcomeTips());
-        msg.setFlag(VCRConst.RECEIVE);
-        msg.setType(VCRConst.TYPE_TEXT);
+        msg.setFlag(EventUtil.RECEIVE);
+        msg.setType(EventUtil.TYPE_TEXT);
         chatMsgList.add(msg);
         chatAdapter.notifyDataSetChanged();
     }
@@ -253,9 +311,10 @@ public class MainActivity extends AppCompatActivity
     private void receiveMsg(String jsonStr) {
         ChatMessage msg = new ChatMessage();
         msg.setContent(JsonUtil.parseJson2KeyStr(jsonStr, "text"));
+        msg.setRid(JsonUtil.parseJson2KeyStr(jsonStr,"rid"));
         msg.setTime(getCurTime());
-        msg.setFlag(VCRConst.RECEIVE);
-        msg.setType(VCRConst.TYPE_TEXT);
+        msg.setFlag(EventUtil.RECEIVE);
+        msg.setType(EventUtil.TYPE_TEXT);
         chatMsgList.add(msg);
         chatAdapter.notifyDataSetChanged();
     }
@@ -264,6 +323,8 @@ public class MainActivity extends AppCompatActivity
      * 发送消息并加添内容到List
      */
     private void sendMsg() {
+
+        boolean net = false;
         String content = eidtTextContent.getText().toString();
         if (null == content) {
             return;
@@ -274,12 +335,27 @@ public class MainActivity extends AppCompatActivity
         ChatMessage msg = new ChatMessage();
         msg.setContent(content);
         msg.setTime(getCurTime());
-        msg.setFlag(VCRConst.SEND);
-        msg.setType(VCRConst.TYPE_TEXT);
+        msg.setFlag(EventUtil.SEND);
+        msg.setType(EventUtil.TYPE_TEXT);
+
+        if (!CommonUtil.isNetWorkConnected(this)){
+            netErr.setVisibility(View.VISIBLE);
+            msg.setNetErr(EventUtil.NET_ERR);
+        }else{
+            netErr.setVisibility(View.GONE);
+            net = true;
+        }
         chatMsgList.add(msg);
         chatAdapter.notifyDataSetChanged();
         eidtTextContent.setText("");
-        new NetTask(TuringUtil.getRequestUrl(getRegexText(content)), this).execute();
+
+        sendText = getRegexText(content);
+        if (net){
+            canTuring = true;
+            //执行发送操作,Vcrobot机器人
+            new NetTask(VcrobotUtil.getRequestUrl(sendText), this).execute();
+
+        }
         //对大量聊天信息清除处理
         removeMsgRecorder();
     }
@@ -290,27 +366,29 @@ public class MainActivity extends AppCompatActivity
      */
     private void sendMsg(String srText){
 
+        if (!CommonUtil.isNetWorkConnected(this)){
+            netErr.setVisibility(View.VISIBLE);
+            return;
+        }else{
+            netErr.setVisibility(View.GONE);
+        }
+
         if (null == srText) {
             return;
         }
         if (srText.isEmpty()) {
             return;
         }
-        ChatMessage msg = new ChatMessage();
-        msg.setContent(srText);
-        msg.setTime(getCurTime());
-        msg.setFlag(VCRConst.SEND);
-        msg.setType(VCRConst.TYPE_TEXT);
-        chatMsgList.add(msg);
-        chatAdapter.notifyDataSetChanged();
-        eidtTextContent.setText("");
-        new NetTask(TuringUtil.getRequestUrl(getRegexText(srText)), this).execute();
+
+        sendText = getRegexText(srText);
+        canTuring = true;
+        new NetTask(VcrobotUtil.getRequestUrl(getRegexText(sendText)), this).execute();
         //对大量聊天信息清除处理
         removeMsgRecorder();
     }
 
     /**
-     * 科大讯飞识别后的文字
+     * 加载语音至list
      *
      * @param seconds 语音秒数
      * @param folder  语音路径
@@ -319,8 +397,15 @@ public class MainActivity extends AppCompatActivity
         ChatMessage msg = new ChatMessage();
         msg.setSeconds(seconds);
         msg.setFolder(folder);
-        msg.setFlag(VCRConst.SEND);
-        msg.setType(VCRConst.TYPE_VOICE);
+        msg.setTime(getCurTime());
+        msg.setFlag(EventUtil.SEND);
+        msg.setType(EventUtil.TYPE_VOICE);
+        if (!CommonUtil.isNetWorkConnected(this)){
+            netErr.setVisibility(View.VISIBLE);
+            msg.setNetErr(EventUtil.NET_ERR);
+        }else{
+            netErr.setVisibility(View.GONE);
+        }
         chatMsgList.add(msg);
         chatAdapter.notifyDataSetChanged();
         chatListView.setSelection(chatMsgList.size() - 1);
@@ -344,7 +429,7 @@ public class MainActivity extends AppCompatActivity
         // 去除开头和结尾的空白字符,转化换行为句号，空格为逗号
         regexText = srcText.trim().replaceAll("\n", ".").replaceAll(" ", ",");
 
-        Log.i(TAG, "转换后的文字：" + regexText);
+        Log.i(TAG, regexText);
         return regexText;
     }
 
@@ -407,7 +492,13 @@ public class MainActivity extends AppCompatActivity
     private class VoiceItemClickListener implements AdapterView.OnItemClickListener {
         @Override
         public void onItemClick(AdapterView<?> parent, View view, int position, long id) {
-            if (VCRConst.TYPE_VOICE != chatMsgList.get(position).getType()) {
+            //评论，赞、踩
+//            String c = chatMsgList.get(position).getRid();
+//
+//            view.findViewById(R.id.zan);
+//            Log.i(TAG, "onItemClick: "+view.getId()+"----"+parent.getId()+"----"+c+"---"+position+"---"+id);
+            //语音操作
+            if (EventUtil.TYPE_VOICE != chatMsgList.get(position).getType()) {
                 return;
             }
             if (null != animView) {
@@ -643,12 +734,12 @@ public class MainActivity extends AppCompatActivity
      */
     private void login(){
         Intent intent = new Intent(MainActivity.this,LoginActivity.class);
-        startActivityForResult(intent,VCRConst.MSG_LOGIN);
+        startActivityForResult(intent, EventUtil.MSG_LOGIN);
     }
 
     @Override
     protected void onActivityResult(int requestCode, int resultCode, Intent data) {
-        if (VCRConst.MSG_LOGIN == requestCode){
+        if (EventUtil.MSG_LOGIN == requestCode && null != data){
             String name = data.getStringExtra("email");
             Log.i(TAG, "onActivityResult: "+name);
             email.setText(name);
@@ -687,10 +778,31 @@ public class MainActivity extends AppCompatActivity
             case R.id.logo:
                 login();
                 break;
+            case R.id.net_err:
+                startActivity(new Intent(android.provider.Settings.ACTION_WIRELESS_SETTINGS));
+                break;
         }
 
     }
 
+    private Handler handler = new Handler(){
+
+        @Override
+        public void handleMessage(Message msg) {
+            super.handleMessage(msg);
+
+            switch (msg.what){
+                case EventUtil.NET_ERR:
+                    netErr.setVisibility(View.VISIBLE);
+                    break;
+                case EventUtil.NET_OK:
+                    netErr.setVisibility(View.GONE);
+                    break;
+                default:
+                    break;
+            }
+        }
+    };
 
     /**
      * 图灵机器人回调接口
@@ -700,8 +812,13 @@ public class MainActivity extends AppCompatActivity
     @Override
     public void getUrlData(String data) {
         Log.i(TAG, "getUrlData: " + data);
-        if (null != data) {
+        canTuring = true;
+        if (null != data && !data.equals("null")) {
             receiveMsg(data);
+        }else if (canTuring){
+            canTuring = false;
+            //执行发送操作
+            new NetTask(TuringUtil.getRequestUrl(sendText), this).execute();
         }
     }
 
@@ -720,6 +837,7 @@ public class MainActivity extends AppCompatActivity
     @Override
     protected void onDestroy() {
         RecorderMediaManager.release();
+        netFlag = false;
         super.onDestroy();
     }
 

@@ -20,13 +20,13 @@
         <item>亲爱的，我想死你了</item>
         <item>欢迎归来，我亲爱的主人</item>
         <item>我是小Q机器人，很高兴为您服务</item>
-        <item>你和我一样，也是西科大的学生吗？</item>
+        <item>你想教我说话吗？[Q@西科大校长是谁？A@目前是杨更社。]</item>
         <item>我也想象着，有朝一日，能走遍整个网络</item>
         <item>野生樱桃也很好吃</item>
         <item>春天是花开的季节</item>
-        <item>没有买卖，就没有杀戮</item>
-        <item>你是怎么知道，我一直在网络上抓取信息？</item>
-        <item>对呀，庞大的数据库是有引擎建立索引的哦，不然怎么能这么快的和你聊天呀</item>
+        <item>你可以对我的回复进行评价哦</item>
+        <item>有些回复是系统自动发出的，是不可以评价的，如本条记录</item>
+        <item>目前我还不会自动造句，不过我正在学习中...</item>
         <item>有些中文很难理解，还好我有强大的分词技术</item>
     </string-array>
 
@@ -34,7 +34,7 @@
 
     <string name="prompt_email">邮箱</string>
     <string name="prompt_password">密码</string>
-    <string name="action_sign_in">登陆或注册</string>
+    <string name="action_sign_in">登陆/注册</string>
     <string name="action_sign_in_short">登陆</string>
     <string name="error_invalid_email">邮箱地址非法</string>
     <string name="error_invalid_password">密码长度太短</string>

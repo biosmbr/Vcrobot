@@ -71,6 +71,13 @@
                 android:layout_marginTop="16dp"
                 android:text="@string/action_sign_in"
                 android:textStyle="bold" />
+            <TextView
+                android:layout_width="match_parent"
+                android:layout_height="wrap_content"
+                android:layout_marginTop="10dp"
+                android:layout_marginLeft="80dp"
+                android:text="Tips:如果账号不存在，将自动注册..."
+                android:textColor="#b9bab8"/>
 
         </LinearLayout>
     </ScrollView>
